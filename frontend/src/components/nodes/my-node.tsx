@@ -22,17 +22,18 @@ export const MyNode: React.FC<MyNodeProps> = ({ id }) => {
 
   const inputs: InputConfig[] = [
     {
-      type: "text",
-      id: `${id}-text1`,
-      label: "Name",
-      initValue: `${id.replace("custom", "")}`,
-      dependsOn: `${id}-select1`,
+      type: "text", // type of input
+      id: `${id}-text1`, // id of it
+      label: "Name", // label of it
+      initValue: `${id.replace("custom", "")}`, // if u want to initialize it with something else can be null since its optional
+      dependsOn: `${id}-select1`, // if depends on some other input (for now only implemented for file/text select input)
     },
     {
       type: "select",
       id: `${id}-select1`,
       label: "Type",
       options: [
+        // options for the select input
         { value: "text", label: "Text" },
         { value: "file", label: "File" },
       ],
@@ -63,7 +64,7 @@ export const MyNode: React.FC<MyNodeProps> = ({ id }) => {
   return (
     <AbstractionNode
       id={id}
-      label="Input"
+      label="My Node"
       inputs={inputs}
       handles={handles}
       icon={NotepadTextDashedIcon}
