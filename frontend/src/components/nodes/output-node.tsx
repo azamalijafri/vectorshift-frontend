@@ -2,10 +2,7 @@
 
 import React, { useState } from "react";
 import { Position, NodeProps } from "reactflow";
-import AbstractionNode, {
-  HandleConfig,
-  InputConfig,
-} from "../abstraction-node";
+import AbstractionNode from "../abstraction-node";
 import { FileOutput } from "lucide-react";
 
 interface OutputNodeProps extends NodeProps {
@@ -31,16 +28,17 @@ export const OutputNode: React.FC<OutputNodeProps> = ({ id }) => {
       id: `${id}-name`,
       label: "Name",
       initValue: `${id.replace("custom", "")}`,
+      dependsOn: `${id}-select1`,
     },
     {
       type: "select",
-      id: `${id}-type`,
+      id: `${id}-select1`,
       label: "Type",
       options: [
-        { value: "Text", label: "Text" },
-        { value: "File", label: "File" },
+        { value: "text", label: "Text" },
+        { value: "file", label: "File" },
       ],
-      initValue: "Text",
+      initValue: "text",
     },
   ];
 

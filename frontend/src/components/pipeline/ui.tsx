@@ -11,6 +11,7 @@ import ReactFlow, {
   OnNodesChange,
   OnEdgesChange,
   OnConnect,
+  ConnectionLineType,
 } from "reactflow";
 import { useStore } from "@/store";
 import { shallow } from "zustand/shallow";
@@ -20,6 +21,8 @@ import { OutputNode } from "@/components/nodes/output-node";
 import { TextNode } from "@/components/nodes/text-node";
 
 import "reactflow/dist/style.css";
+import { CheckboxNode } from "../nodes/checkbox-node";
+import { MyNode } from "../nodes/my-node";
 
 const gridSize = 20;
 const proOptions = { hideAttribution: true };
@@ -28,6 +31,8 @@ const nodeTypes = {
   llm: LLMNode,
   customOutput: OutputNode,
   text: TextNode,
+  customCheckbox: CheckboxNode,
+  myNode: MyNode,
 };
 
 interface NodeData {
@@ -127,7 +132,7 @@ export const PipelineUI: React.FC = () => {
         nodeTypes={nodeTypes}
         proOptions={proOptions}
         snapGrid={[gridSize, gridSize]}
-        connectionLineType="smoothstep"
+        connectionLineType={"smoothstep" as ConnectionLineType | undefined}
       >
         <Background color="#aaa" gap={gridSize} />
         <Controls />

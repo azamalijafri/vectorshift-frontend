@@ -2,10 +2,7 @@
 
 import React, { useState } from "react";
 import { Position, NodeProps } from "reactflow";
-import AbstractionNode, {
-  HandleConfig,
-  InputConfig,
-} from "../abstraction-node";
+import AbstractionNode from "../abstraction-node";
 import { BrainCircuit } from "lucide-react";
 
 interface LLMNodeProps extends NodeProps {

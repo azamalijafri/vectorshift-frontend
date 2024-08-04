@@ -2,7 +2,14 @@
 
 import React from "react";
 import { DraggableNode } from "../draggable-node";
-import { BrainCircuit, FileInput, FileOutput, Text } from "lucide-react";
+import {
+  BrainCircuit,
+  Check,
+  FileInput,
+  FileOutput,
+  NotepadTextDashedIcon,
+  Text,
+} from "lucide-react";
 
 export const PipelineToolbar: React.FC = () => {
   return (
@@ -19,6 +26,13 @@ export const PipelineToolbar: React.FC = () => {
         <DraggableNode type="llm" label="LLM" icon={BrainCircuit} />
         <DraggableNode type="customOutput" label="Output" icon={FileOutput} />
         <DraggableNode type="text" label="Text" icon={Text} />
+
+        <DraggableNode type="customCheckbox" label="Checkbox" icon={Check} />
+        <DraggableNode
+          type="myNode"
+          label="My Node"
+          icon={NotepadTextDashedIcon}
+        />
       </div>
     </div>
   );

@@ -1,43 +1,16 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, ChangeEvent, useRef, useEffect } from "react";
 import { Handle, Position, useUpdateNodeInternals } from "reactflow";
-import { Input } from "./ui/input";
-import { Check, ChevronsUpDown, LucideProps } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { useStore } from "@/store";
+import { Checkbox } from "./ui/checkbox";
+import TextInput from "@/components/inputs/text-input";
+import FileInput from "@/components/inputs/file-input";
+import SelectInput from "@/components/inputs/select-input";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
-import { Textarea } from "./ui/textarea";
-
-export interface HandleConfig {
-  type: "source" | "target";
-  position: Position;
-  id: string;
-  label?: string;
-  style?: React.CSSProperties;
-  customNode?: boolean;
-}
-
-interface TextInputConfig {
-  type: "text";
-  id: string;
-  label: string;
-  initValue?: null | string;
-}
-
-interface SelectInputConfig {
-  type: "select";
-  id: string;
-  label: string;
-  options: { value: string; label: string }[];
-  initValue?: null | string;
-}
-
-export type InputConfig = TextInputConfig | SelectInputConfig;
+  createDependencyMap,
+  findKeyByValue,
+  initializeValues,
+} from "@/lib/utils";
+import { LucideProps } from "lucide-react";
 
 interface AbstractionNodeProps {
   id: string;
@@ -63,110 +36,82 @@ const AbstractionNode: React.FC<AbstractionNodeProps> = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const updateNodeInternals = useUpdateNodeInternals();
 
-  const initializeValues = () => {
-    const initialValues: { [key: string]: string } = {};
-    inputs.forEach((input) => {
-      if (input.initValue) {
-        initialValues[input.id] = input.initValue;
-      }
-    });
-    return initialValues;
-  };
-
-  const [values, setValues] = useState<{ [key: string]: string }>(
-    initializeValues
-  );
+  const dependencyMap = createDependencyMap(inputs as TextInputConfig[]);
+  const [values, setValues] = useState<{
+    [key: string]: string | boolean | null;
+  }>(initializeValues(inputs));
+  const [isFocused, setIsFocused] = useState(false);
+  const { edges } = useStore();
 
   const handleInputChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+    type: "text" | "file"
   ) => {
     const { id, value } = e.target;
-    setValues((prevValues) => ({ ...prevValues, [id]: value }));
+    setValues((prevValues) => ({
+      ...prevValues,
+      [id]: value,
+    }));
+
+    if (type === "text") {
+      updateHandles(id, value);
+    }
   };
 
-  const [isFocused, setIsFocused] = useState(false);
+  const updateHandles = (id: string, value: string) => {
+    const regex = /\{\{(.*?)\}\}/g;
+    const matches = [...(value as string).matchAll(regex)].map(
+      (match) => match[1]
+    );
 
-  const selectInputId = inputs.find((input) => input.type == "select")?.id;
-  const textInputId = inputs.find((input) => input.type == "text")?.id;
+    const newHandles = [...handles];
+    for (const match of matches) {
+      if (!newHandles.find((handle) => handle.label === match)) {
+        newHandles.push({
+          type: "target",
+          position: Position.Left,
+          id: `${newHandles.length + 1}-output`,
+          label: match,
+          inputId: id,
+        });
+      }
+    }
 
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+    const filteredHandles = newHandles.filter(
+      (handle) => handle.inputId !== id || matches.includes(handle.label!)
+    );
+
+    const leftHandles = filteredHandles.filter(
+      (handle) => handle.position === "left"
+    );
+    const rightHandles = filteredHandles.filter(
+      (handle) => handle.position === "right"
+    );
+
+    const containerHeight = containerRef.current?.clientHeight || 200;
+    const leftSpacing = containerHeight / (leftHandles.length + 1);
+    const rightSpacing = containerHeight / (rightHandles.length + 1);
+
+    leftHandles.forEach((handle, index) => {
+      handle.style = { top: `${leftSpacing * (index + 1)}px` };
+    });
+
+    rightHandles.forEach((handle, index) => {
+      handle.style = { top: `${rightSpacing * (index + 1)}px` };
+    });
+
+    setHandles([...leftHandles, ...rightHandles]);
+  };
 
   useEffect(() => {
-    if (
-      values[selectInputId!] === "Text" ||
-      (!values[selectInputId!] && textInputId)
-    ) {
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
-        textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-      }
-
-      const regex = /\{\{(.*?)\}\}/g;
-      const matches = [...values[textInputId!].matchAll(regex)].map(
-        (match) => match[1]
-      );
-
-      for (const match of matches) {
-        if (!handles.find((handle) => handle.label == match))
-          handles.push({
-            type: "target",
-            position: Position.Left,
-            id: `${handles.length + 1}-output`,
-            label: match,
-            customNode: true,
-          });
-      }
-
-      handles = handles.filter((handle) => {
-        if (
-          handle.label &&
-          handle.customNode &&
-          !matches.includes(handle.label)
-        )
-          return null;
-        return handle;
-      });
-
-      // if (matches.length > 0) {
-      const leftHandles = handles.filter((handle) => handle.position == "left");
-      const rightHandles = handles.filter(
-        (handle) => handle.position == "right"
-      );
-
-      const containerHeight = containerRef.current?.clientHeight || 200;
-      const leftSpacing = containerHeight / (leftHandles.length + 1);
-      const rightSpacing = containerHeight / (rightHandles.length + 1);
-
-      leftHandles.forEach((handle, index) => {
-        handle.style = { top: `${leftSpacing * (index + 1)}px` };
-      });
-
-      rightHandles.forEach((handle, index) => {
-        handle.style = { top: `${rightSpacing * (index + 1)}px` };
-      });
-
-      setHandles([...leftHandles, ...rightHandles]);
-
-      // Trigger node update
-      updateNodeInternals(id);
-      // }
-    }
-  }, [
-    selectInputId,
-    values,
-    textareaRef,
-    textInputId,
-    setHandles,
-    handles,
-    updateNodeInternals,
-    id,
-  ]);
+    updateNodeInternals(id);
+  }, [handles, id, updateNodeInternals]);
 
   return (
     <div
       ref={containerRef}
-      className={`border border-purple-400 py-2 px-5 rounded-md bg-white ${
-        isFocused && "shadow-glow"
+      className={`border border-purple-400 pt-4 pb-8 px-5 rounded-md bg-white ${
+        isFocused ? "shadow-glow" : ""
       }`}
       style={{ position: "relative" }}
     >
@@ -177,13 +122,21 @@ const AbstractionNode: React.FC<AbstractionNodeProps> = ({
             position={handle.position}
             id={handle.id}
             style={{ ...handle.style }}
-            className="bg-purple-800 size-2 ring-2 ring-purple-300"
+            className={`size-2 ring-2 ring-purple-300 ${
+              edges.find(
+                (edge) =>
+                  edge.sourceHandle === handle.id ||
+                  edge.targetHandle === handle.id
+              )
+                ? "bg-purple-800"
+                : "bg-white"
+            }`}
           />
           {handle.label && (
             <span
               style={handle.style}
               className={`ml-2 text-sm text-purple-700 absolute ${
-                handle.position == "right" ? "" : "-left-20"
+                handle.position === "right" ? "" : "-left-20"
               }`}
             >
               {handle.label}
@@ -196,7 +149,7 @@ const AbstractionNode: React.FC<AbstractionNodeProps> = ({
         <span>{label}</span>
       </div>
       <div>{children}</div>
-      <div className="flex flex-col gap-y-4">
+      <div className="flex flex-col gap-y-5">
         {inputs.map((input) => {
           switch (input.type) {
             case "text":
@@ -204,24 +157,18 @@ const AbstractionNode: React.FC<AbstractionNodeProps> = ({
                 <div key={input.id}>
                   <span className="text-purple-700 text-sm">{input.label}</span>
                   <div className="flex flex-wrap gap-2">
-                    {values[selectInputId!] === "File" ? (
-                      <Input
-                        type={"file"}
+                    {dependencyMap[input.id] &&
+                    values[dependencyMap[input.id] as string] === "file" ? (
+                      <FileInput
                         id={input.id}
-                        value={values[input.id] || ""}
-                        onChange={handleInputChange}
-                        className="mt-2"
-                        onFocus={() => setIsFocused(true)}
-                        onBlur={() => setIsFocused(false)}
+                        value={values[input.id] as string}
+                        onChange={(e) => handleInputChange(e, "file")}
                       />
                     ) : (
-                      <Textarea
-                        ref={textareaRef}
-                        rows={1}
-                        className="mt-2 resize-none min-h-9 overflow-hidden"
+                      <TextInput
                         id={input.id}
-                        value={values[input.id] || ""}
-                        onChange={handleInputChange}
+                        value={values[input.id] as string}
+                        onChange={(e) => handleInputChange(e, "text")}
                         onFocus={() => setIsFocused(true)}
                         onBlur={() => setIsFocused(false)}
                       />
@@ -235,48 +182,42 @@ const AbstractionNode: React.FC<AbstractionNodeProps> = ({
                   <span className="text-purple-700 text-sm mb-2">
                     {input.label}
                   </span>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        className="w-full justify-between font-normal"
-                      >
-                        {values[input.id] ? values[input.id] : "Select option"}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {input.options.map((option) => (
-                        <DropdownMenuItem
-                          key={option.value}
-                          onClick={() => {
-                            if (option.value === "File") {
-                              setValues((prevValues) => ({
-                                ...prevValues,
-                                [textInputId!]: "",
-                              }));
-                            }
-
-                            setValues((prevValues) => ({
-                              ...prevValues,
-                              [input.id]: option.value,
-                            }));
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              values[input.id] === option.value
-                                ? "opacity-100"
-                                : "opacity-0"
-                            )}
-                          />
-                          {option.label}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <SelectInput
+                    id={input.id}
+                    value={values[input.id] as string}
+                    options={input.options}
+                    onChange={(value) => {
+                      if (value === "file") {
+                        setValues((prevValues) => ({
+                          ...prevValues,
+                          [findKeyByValue(dependencyMap, input.id) as string]:
+                            "",
+                        }));
+                      }
+                      setValues((prevValues) => ({
+                        ...prevValues,
+                        [input.id]: value,
+                      }));
+                    }}
+                  />
+                </div>
+              );
+            case "checkbox":
+              return (
+                <div className="flex items-center space-x-2" key={input.id}>
+                  <Checkbox
+                    id={input.id}
+                    checked={!!values[input.id]}
+                    onClick={() => {
+                      setValues((prevValues) => ({
+                        ...prevValues,
+                        [input.id]: !values[input.id],
+                      }));
+                    }}
+                  />
+                  <label htmlFor={input.id} className="text-sm">
+                    {input.label}
+                  </label>
                 </div>
               );
             default:
